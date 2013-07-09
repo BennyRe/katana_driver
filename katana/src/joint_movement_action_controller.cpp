@@ -115,7 +115,7 @@ void JointMovementActionController::executeCB(const JMAS::GoalConstPtr &goal)
 
   if (!suitableJointGoal(goal->jointGoal.name))
   {
-    ROS_ERROR("Joints on incoming goal don't match our joints/gripper_joints");
+    ROS_ERROR("JointMovementActionController: Joints on incoming goal don't match our joints/gripper_joints");
 
     for (size_t i = 0; i < goal->jointGoal.name.size(); i++)
     {

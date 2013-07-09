@@ -474,7 +474,7 @@ int JointTrajectoryActionController::executeCommon(const trajectory_msgs::JointT
 {
   if (!suitableJointGoal(trajectory.joint_names))
   {
-    ROS_ERROR("Joints on incoming goal don't match our joints");
+    ROS_ERROR("JointTrajectoryActionController: Joints on incoming goal don't match our joints");
 
     for (size_t i = 0; i < trajectory.joint_names.size(); i++)
     {
