@@ -56,7 +56,7 @@ void Katana300::setLimits()
 
   kni->setMotorAccelerationLimit(0, 2);
   kni->setMotorVelocityLimit(0, 90);	// set to 90 to protect our old Katana
-
+std::cout << "Joint 0 " << converter->vel_enc2rad(0, 90) << std::endl;
   for (size_t i = 1; i < NUM_MOTORS; i++)
   {
     // These two settings probably only influence KNI functions like moveRobotToEnc(),
@@ -64,6 +64,8 @@ void Katana300::setLimits()
     // just to be sure.
     kni->setMotorAccelerationLimit(i, 2);
     kni->setMotorVelocityLimit(i, 90);
+
+    std::cout << "Joint " << i << " " << converter->vel_enc2rad(i, 90) << std::endl;
   }
 
 }
@@ -111,10 +113,13 @@ bool Katana300::allJointsReady()
   {
     if (motor_status_[i] == MSF_MOTCRASHED)
       return false;
-    /*
+
     if (fabs(desired_angles_[i] - motor_angles[i]) > JOINTS_STOPPED_POS_TOLERANCE)
+    {
+      std::cout << "desired_angles_ not reached" << std::endl;
       return false;
-      */
+    }
+
       
     if (fabs(motor_velocities_[i]) > JOINTS_STOPPED_VEL_TOLERANCE)
       return false;
@@ -234,7 +239,6 @@ void Katana300::testSpeed()
  */
 bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, boost::function<bool ()> isPreemptRequested)
 {
-	std::vector<int> encoders(traj->at(0).splines.size());
 	ROS_DEBUG("Entered executeTrajectory. Spline size: %d, trajectory size: %d, number of motors: %d", (int)traj->at(0).splines.size(), (int)traj->size(), kni->getNumberOfMotors());
 	try
 	{
@@ -286,9 +290,9 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 		  traj->at(i).start_time += delay;
 		}
 
-		for (size_t i = 0; i < traj->size(); i++)
+		for (size_t step = 0; step < traj->size(); step++)
 		{
-		  ROS_DEBUG("Executing step %d", (int)i);
+		  ROS_DEBUG("Executing step %d", (int)step);
 
 		  if(isPreemptRequested())
 		  {
@@ -296,34 +300,12 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 			  return true;
 		  }
 
-		  Segment seg = traj->at(i);
+		  Segment seg = traj->at(step);
 
 		  // + 1 to be flexible enough to perform trajectories that include the gripper
 		  if (seg.splines.size() != joint_names_.size() && seg.splines.size() != (joint_names_.size() + 1))
 		  {
 			ROS_ERROR("Wrong number of joints in specified trajectory (was: %zu, expected: %zu)!", seg.splines.size(), joint_names_.size());
-		  }
-
-		  // copy joint values and calculate to encoder values
-		  for (size_t j = 0; j < seg.splines.size(); j++)
-		  {
-			  encoders[j] = (int)converter->angle_rad2enc(j, seg.splines[j].target_position);
-			  desired_angles_[j] = seg.splines[j].target_position;
-		  }
-
-		  if(seg.splines.size() != (joint_names_.size() + 1))
-		  {
-			  ROS_DEBUG("Encoders: %d, %d, %d, %d, %d, %d",
-					  encoders[0], encoders[1], encoders[2],
-					  encoders[3], encoders[4], encoders[5]
-					  );
-		  }
-		  else
-		  {
-			  ROS_DEBUG("Encoders: %d, %d, %d, %d, %d",
-					  encoders[0], encoders[1], encoders[2],
-					  encoders[3], encoders[4]
-					  );
 		  }
 
 		  refreshMotorStatus();
@@ -333,15 +315,41 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 			  return false;
 		  }
 
-		  kni->moveRobotToEnc(encoders, false);	//if the movement isn't smooth false could possibly help
+		  if(!ros::ok())
+		  {
+			  ROS_INFO("Stop trajectory because ROS node is stopped.");
+			  return true;
+		  }
+
+		  // time in 10 ms units, seg.duration is in seconds
+		  short duration = static_cast<short>(seg.duration * 100);
+ROS_INFO("Calculated duration");
+		  // copy joint values and calculate to encoder values
+		  for (size_t jointNo = 0; jointNo < seg.splines.size(); jointNo++)
+		  {
+			  short encoder = static_cast<short>(converter->angle_rad2enc(jointNo, seg.splines[jointNo].target_position));
+			  desired_angles_[jointNo] = seg.splines[jointNo].target_position;
+			  // the actial position
+			  short p1 = round(converter->angle_rad2enc(jointNo, seg.splines[jointNo].coef[0]));
+			  short p2 = round(64 * converter->vel_rad2enc(jointNo, seg.splines[jointNo].coef[1]));
+			  short p3 = round(1024 * converter->acc_rad2enc(jointNo, seg.splines[jointNo].coef[2]));
+			  short p4 = round(32768 * converter->jerk_rad2enc(jointNo, seg.splines[jointNo].coef[3]));
+ROS_INFO("Encoder %d, Duration %d, p1, %d", encoder, duration, p1);
+			  kni->sendSplineToMotor(jointNo, encoder, duration, p1, p2, p3, p4);
+		  }
+
+		  ROS_INFO("StartSplineMovement");
+		  kni->startSplineMovement(false);
+
+		  //kni->moveRobotToEnc(encoders, false);	//if the movement isn't smooth false could possibly help
 		  ROS_DEBUG("duration: %f", seg.duration);
 
-		  ros::Rate moveWait(1.0 / seg.duration);	// *1.5 duration is in seconds rate is Hz
+		  ros::Rate moveWait(1.1 / seg.duration);	// *1.5 duration is in seconds rate is Hz
 		  moveWait.sleep();
 
 		}
 
-		kni->moveRobotToEnc(encoders, true);	// to ensure that the goal position is reached
+		//kni->moveRobotToEnc(encoders, true);	// to ensure that the goal position is reached
 		return true;
 	}
 	catch (const WrongCRCException &e)

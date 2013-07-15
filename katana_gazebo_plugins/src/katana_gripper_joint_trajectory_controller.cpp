@@ -168,6 +168,17 @@ void KatanaGripperJointTrajectoryController::goalCB(GoalHandle gh)
   if (!setsEqual(joint_names_, gh.getGoal()->trajectory.joint_names))
   {
     ROS_ERROR("KatanaGripperJointTrajectoryController::goalCB: Joints on incoming goal don't match our joints");
+    
+    for (size_t i = 0; i < gh.getGoal()->trajectory.joint_names.size(); i++)
+    {
+      ROS_INFO("  incoming joint %d: %s", (int)i, gh.getGoal()->trajectory.joint_names[i].c_str());
+    }
+
+    for (size_t i = 0; i < joint_names_.size(); i++)
+    {
+      ROS_INFO("  our joint      %d: %s", (int)i, joint_names_[i].c_str());
+    }
+    
     gh.setRejected();
     return;
   }

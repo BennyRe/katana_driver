@@ -534,7 +534,7 @@ int JointTrajectoryActionController::executeCommon(const trajectory_msgs::JointT
     return control_msgs::FollowJointTrajectoryResult::INVALID_GOAL;
   }
   current_trajectory_ = new_traj;
-
+ROS_INFO("Trajecotry calculated");
   // sleep until 0.5 seconds before scheduled start
   ROS_DEBUG_COND(
       trajectory.header.stamp > ros::Time::now(),
@@ -620,7 +620,12 @@ bool JointTrajectoryActionController::goalReached()
   {
     double error = current_trajectory_->back().splines[i].target_position - katana_->getMotorAngles()[i];
     if (goal_constraints_[i] > 0 && fabs(error) > goal_constraints_[i])
+    {
+      std::cout <<  "Joint " << i << " did not reach its goal. target position: "
+    		  << current_trajectory_->back().splines[i].target_position
+    		  << " actual position: " << katana_->getMotorAngles()[i] << std::endl;
       return false;
+    }
   }
   return true;
 }

@@ -84,7 +84,7 @@ void JointMovementAdapter::jointStateCb(const pr2_controllers_msgs::JointTraject
 
 void JointMovementAdapter::executeCB(const JMAS::GoalConstPtr &movement_goal)
 {
-  ROS_DEBUG("Got a goal");
+  ROS_INFO("Got a goal");
 
   // note: the SimpleActionServer guarantees that we enter this function only when
   // there is no other active goal. in other words, only one instance of executeCB()
@@ -126,6 +126,7 @@ void JointMovementAdapter::executeCB(const JMAS::GoalConstPtr &movement_goal)
   if (!ros::ok())
   {
     as_.setAborted();
+    ROS_WARN("joint_movement_adapter was killed!");
     return;
   }
 
@@ -144,7 +145,7 @@ void JointMovementAdapter::executeCB(const JMAS::GoalConstPtr &movement_goal)
   }
   else if (state == actionlib::SimpleClientGoalState::ABORTED)
   {
-    ROS_DEBUG("Aborted");
+    ROS_INFO("Aborted");
     as_.setAborted();
   }
   else
