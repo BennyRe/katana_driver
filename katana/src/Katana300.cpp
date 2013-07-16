@@ -322,7 +322,7 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 		  }
 
 		  // time in 10 ms units, seg.duration is in seconds
-		  short duration = static_cast<short>(seg.duration * 100);
+		 /* short duration = static_cast<short>(seg.duration * 100);
 ROS_INFO("Calculated duration");
 		  // copy joint values and calculate to encoder values
 		  for (size_t jointNo = 0; jointNo < seg.splines.size(); jointNo++)
@@ -339,13 +339,44 @@ ROS_INFO("Encoder %d, Duration %d, p1, %d", encoder, duration, p1);
 		  }
 
 		  ROS_INFO("StartSplineMovement");
-		  kni->startSplineMovement(false);
+		  kni->startSplineMovement(true);*/
 
+		  for (double t = 0.0; t < traj->at(step).duration; t += 0.025)
+		  {
+			  double pos_t = 0, vel_t = 0, acc_t = 0;
+			  int velMax = 0, accMax = 0;
+			  std::vector<int> positionsEnc = std::vector<int>(seg.splines.size());
+			  for (unsigned int jointNo = 0; jointNo < seg.splines.size(); ++jointNo)
+			  {
+
+				  sampleSplineWithTimeBounds(seg.splines[jointNo].coef, seg.duration, t,
+									   pos_t, vel_t, acc_t);
+				  positionsEnc[jointNo] = converter->angle_rad2enc(jointNo, pos_t);
+
+				  if(abs(converter->vel_rad2enc(jointNo, vel_t)) > abs(velMax))
+				  {
+					  velMax = converter->vel_rad2enc(jointNo, vel_t);
+				  }
+
+				  if(abs(converter->acc_rad2enc(jointNo, acc_t)) > abs(accMax))
+				  {
+					  accMax = converter->acc_rad2enc(jointNo, acc_t);
+				  }
+
+			  }
+			  ROS_INFO("t = %f", t);
+			  //kni->moveRobotToEnc4D(positionsEnc, velMax, accMax);
+			  kni->moveRobotToEnc(positionsEnc, false);
+			  ROS_INFO("Encoder %d, %d, %d, step %zu", positionsEnc[0], positionsEnc[1], positionsEnc[2], step);
+			  //ros::Rate moveWait(1.0 / t);	// *1.5 duration is in seconds rate is Hz
+			  //moveWait.sleep();
+			  usleep(24000);
+		  }
 		  //kni->moveRobotToEnc(encoders, false);	//if the movement isn't smooth false could possibly help
 		  ROS_DEBUG("duration: %f", seg.duration);
 
-		  ros::Rate moveWait(1.1 / seg.duration);	// *1.5 duration is in seconds rate is Hz
-		  moveWait.sleep();
+		  /*ros::Rate moveWait(1.0 / seg.duration);	// *1.5 duration is in seconds rate is Hz
+		  moveWait.sleep();*/
 
 		}
 
@@ -366,6 +397,10 @@ ROS_INFO("Encoder %d, Duration %d, p1, %d", encoder, duration, p1);
 		// the message returned by the Katana is:
 		// FirmwareException : 'StopperThread: collision on axis: 1 (axis N)'
 		ROS_ERROR("FirmwareException: Motor collision? Perhaps we tried to send a trajectory that the arm couldn't follow. (exception in executeTrajectory(): %s)", e.message().c_str());
+	}
+	catch (const MotorTimeoutException &e)
+	{
+		ROS_ERROR("MotorTimeoutException (exception in executeTrajectory(): %s)", e.what());
 	}
 	catch (const Exception &e)
 	{
