@@ -116,7 +116,6 @@ bool Katana300::allJointsReady()
 
     if (fabs(desired_angles_[i] - motor_angles[i]) > JOINTS_STOPPED_POS_TOLERANCE)
     {
-      std::cout << "desired_angles_ not reached" << std::endl;
       return false;
     }
 
@@ -290,6 +289,12 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 		  traj->at(i).start_time += delay;
 		}
 
+		// enable splines with gripper
+		bool isPresent;
+		int openEncoder, closeEncoder;
+		kni->getGripperParameters(isPresent, openEncoder, closeEncoder);
+		kni->setGripperParameters(false, openEncoder, closeEncoder);
+
 		for (size_t step = 0; step < traj->size(); step++)
 		{
 		  ROS_DEBUG("Executing step %d", (int)step);
@@ -322,8 +327,7 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 		  }
 
 		  // time in 10 ms units, seg.duration is in seconds
-		 /* short duration = static_cast<short>(seg.duration * 100);
-ROS_INFO("Calculated duration");
+		  short duration = static_cast<short>(seg.duration * 100);
 		  // copy joint values and calculate to encoder values
 		  for (size_t jointNo = 0; jointNo < seg.splines.size(); jointNo++)
 		  {
@@ -334,49 +338,12 @@ ROS_INFO("Calculated duration");
 			  short p2 = round(64 * converter->vel_rad2enc(jointNo, seg.splines[jointNo].coef[1]));
 			  short p3 = round(1024 * converter->acc_rad2enc(jointNo, seg.splines[jointNo].coef[2]));
 			  short p4 = round(32768 * converter->jerk_rad2enc(jointNo, seg.splines[jointNo].coef[3]));
-ROS_INFO("Encoder %d, Duration %d, p1, %d", encoder, duration, p1);
+
 			  kni->sendSplineToMotor(jointNo, encoder, duration, p1, p2, p3, p4);
 		  }
 
-		  ROS_INFO("StartSplineMovement");
-		  kni->startSplineMovement(true);*/
-
-		  for (double t = 0.0; t < traj->at(step).duration; t += 0.025)
-		  {
-			  double pos_t = 0, vel_t = 0, acc_t = 0;
-			  int velMax = 0, accMax = 0;
-			  std::vector<int> positionsEnc = std::vector<int>(seg.splines.size());
-			  for (unsigned int jointNo = 0; jointNo < seg.splines.size(); ++jointNo)
-			  {
-
-				  sampleSplineWithTimeBounds(seg.splines[jointNo].coef, seg.duration, t,
-									   pos_t, vel_t, acc_t);
-				  positionsEnc[jointNo] = converter->angle_rad2enc(jointNo, pos_t);
-
-				  if(abs(converter->vel_rad2enc(jointNo, vel_t)) > abs(velMax))
-				  {
-					  velMax = converter->vel_rad2enc(jointNo, vel_t);
-				  }
-
-				  if(abs(converter->acc_rad2enc(jointNo, acc_t)) > abs(accMax))
-				  {
-					  accMax = converter->acc_rad2enc(jointNo, acc_t);
-				  }
-
-			  }
-			  ROS_INFO("t = %f", t);
-			  //kni->moveRobotToEnc4D(positionsEnc, velMax, accMax);
-			  kni->moveRobotToEnc(positionsEnc, false);
-			  ROS_INFO("Encoder %d, %d, %d, step %zu", positionsEnc[0], positionsEnc[1], positionsEnc[2], step);
-			  //ros::Rate moveWait(1.0 / t);	// *1.5 duration is in seconds rate is Hz
-			  //moveWait.sleep();
-			  usleep(24000);
-		  }
-		  //kni->moveRobotToEnc(encoders, false);	//if the movement isn't smooth false could possibly help
-		  ROS_DEBUG("duration: %f", seg.duration);
-
-		  /*ros::Rate moveWait(1.0 / seg.duration);	// *1.5 duration is in seconds rate is Hz
-		  moveWait.sleep();*/
+		  ros::Time::sleepUntil(ros::Time(seg.start_time - 0.025));
+		  kni->startSplineMovement(false);
 
 		}
 
