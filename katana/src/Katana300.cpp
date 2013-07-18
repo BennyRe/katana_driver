@@ -295,6 +295,7 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 		kni->getGripperParameters(isPresent, openEncoder, closeEncoder);
 		kni->setGripperParameters(false, openEncoder, closeEncoder);
 
+		// iterate over all trajectory steps
 		for (size_t step = 0; step < traj->size(); step++)
 		{
 		  ROS_DEBUG("Executing step %d", (int)step);
@@ -342,7 +343,7 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 			  kni->sendSplineToMotor(jointNo, encoder, duration, p1, p2, p3, p4);
 		  }
 
-		  ros::Time::sleepUntil(ros::Time(seg.start_time - 0.025));
+		  ros::Time::sleepUntil(ros::Time(seg.start_time - 0.025));	// - 25 ms to compensate overhead
 		  kni->startSplineMovement(false);
 
 		}
