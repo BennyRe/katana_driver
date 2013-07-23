@@ -150,6 +150,7 @@ void splineCoefficients(int steps, double *timearray, double *encoderarray, doub
   }
   boost::numeric::ublas::permutation_matrix<unsigned int> piv(steps - 1);
   lu_factorize(ublas_A, piv);
+
   lu_substitute(ublas_A, piv, ublas_b);
 
   // save result in derivatives array

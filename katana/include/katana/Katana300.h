@@ -37,6 +37,7 @@
 #include <katana/AbstractKatana.h>
 #include <katana/KNIConverter.h>
 #include <katana/Katana.h>
+#include <katana/spline_functions.h>
 
 namespace katana
 {
@@ -48,6 +49,9 @@ public:
   virtual ~Katana300();
 
   virtual void setLimits();
+
+  virtual bool executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj,
+		  boost::function<bool ()> isPreemptRequested);
 
   virtual void freezeRobot();
   virtual bool moveJoint(int jointIndex, double turningAngle);
