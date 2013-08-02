@@ -334,7 +334,7 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 		  {
 			  short encoder = static_cast<short>(converter->angle_rad2enc(jointNo, seg.splines[jointNo].target_position));
 			  desired_angles_[jointNo] = seg.splines[jointNo].target_position;
-			  // the actial position
+			  // the actual position
 			  short p1 = round(converter->angle_rad2enc(jointNo, seg.splines[jointNo].coef[0]));
 			  short p2 = round(64 * converter->vel_rad2enc(jointNo, seg.splines[jointNo].coef[1]));
 			  short p3 = round(1024 * converter->acc_rad2enc(jointNo, seg.splines[jointNo].coef[2]));
