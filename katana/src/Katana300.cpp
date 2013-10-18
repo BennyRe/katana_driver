@@ -55,17 +55,15 @@ void Katana300::setLimits()
 
 
   kni->setMotorAccelerationLimit(0, 2);
-  kni->setMotorVelocityLimit(0, 90);	// set to 90 to protect our old Katana
-std::cout << "Joint 0 " << converter->vel_enc2rad(0, 90) << std::endl;
+  kni->setMotorVelocityLimit(0, 60);	// set to 90 to protect our old Katana
+
   for (size_t i = 1; i < NUM_MOTORS; i++)
   {
     // These two settings probably only influence KNI functions like moveRobotToEnc(),
     // openGripper() and so on, and not the spline trajectories. We still set them
     // just to be sure.
     kni->setMotorAccelerationLimit(i, 2);
-    kni->setMotorVelocityLimit(i, 90);
-
-    std::cout << "Joint " << i << " " << converter->vel_enc2rad(i, 90) << std::endl;
+    kni->setMotorVelocityLimit(i, 60);
   }
 
 }
@@ -342,8 +340,9 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 
 			  kni->sendSplineToMotor(jointNo, encoder, duration, p1, p2, p3, p4);
 		  }
+		  ros::spinOnce();
+		  ros::Time::sleepUntil(ros::Time(seg.start_time /*- 0.025*/));	// - 25 ms to compensate overhead
 
-		  ros::Time::sleepUntil(ros::Time(seg.start_time - 0.025));	// - 25 ms to compensate overhead
 		  kni->startSplineMovement(false);
 
 		}
