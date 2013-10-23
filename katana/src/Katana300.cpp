@@ -340,8 +340,11 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 
 			  kni->sendSplineToMotor(jointNo, encoder, duration, p1, p2, p3, p4);
 		  }
+
+		  lock.unlock();
 		  ros::spinOnce();
 		  ros::Time::sleepUntil(ros::Time(seg.start_time /*- 0.025*/));	// - 25 ms to compensate overhead
+		  lock.lock();
 
 		  kni->startSplineMovement(false);
 
