@@ -56,6 +56,8 @@ void Katana300::setLimits()
 
   kni->setMotorAccelerationLimit(0, 2);
   kni->setMotorVelocityLimit(0, 60);	// set to 90 to protect our old Katana
+  //kni->setPositionCollisionLimit(0, 35);
+  //kni->setSpeedCollisionLimit(0, 35);
 
   for (size_t i = 1; i < NUM_MOTORS; i++)
   {
@@ -64,6 +66,8 @@ void Katana300::setLimits()
     // just to be sure.
     kni->setMotorAccelerationLimit(i, 2);
     kni->setMotorVelocityLimit(i, 60);
+    //kni->setPositionCollisionLimit(i, 35);
+    //kni->setSpeedCollisionLimit(i, 35);
   }
 
 }
@@ -343,7 +347,19 @@ bool Katana300::executeTrajectory(boost::shared_ptr<SpecifiedTrajectory> traj, b
 
 		  lock.unlock();
 		  ros::spinOnce();
-		  ros::Time::sleepUntil(ros::Time(seg.start_time /*- 0.025*/));	// - 25 ms to compensate overhead
+		  //ros::Time::sleepUntil(ros::Time(seg.start_time /*- 0.025*/));	// - 25 ms to compensate overhead
+		  while(seg.start_time > ros::Time::now().toSec())
+		  {
+			  if(isPreemptRequested())
+			  {
+				  ROS_INFO("Preempt requested. Aborting the trajectory!");
+				  lock.lock();
+				  kni->freezeRobot();
+				  return true;
+			  }
+			  ros::spinOnce();
+			  ros::Duration(0.001).sleep();
+		  }
 		  lock.lock();
 
 		  kni->startSplineMovement(false);
